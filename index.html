@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>訪問介護 週間ルートボード 安定ベース版</title>
+<style>
+:root{
+  --slot-h:18px;
+  --route-w:92px;
+  --time-w:58px;
+  --head-h:44px;
+  --green:#a9d18e;
+  --yellow:#fff3b0;
+  --orange:#fed7aa;
+  --red:#fca5a5;
+  --grid:#e5e7eb;
+  --text:#111827;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+  color:var(--text);
+  background:#f5f5f5;
+}
+.app{
+  height:100vh;
+  display:grid;
+  grid-template-columns:320px 1fr;
+  overflow:hidden;
+}
+body.collapsed .app{grid-template-columns:1fr}
+body.collapsed aside{display:none}
+aside{
+  background:#fff;
+  border-right:1px solid #ddd;
+  padding:14px;
+  overflow:auto;
+}
+main{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+h1{font-size:18px;margin:0 0 12px}
+h2{font-size:14px;margin:18px 0 8px}
+label{font-size:12px;font-weight:700;display:block;margin:10px 0 4px}
+input,select,button{
+  width:100%;
+  font-size:13px;
+  padding:8px;
+  border:1px solid #d1d5db;
+  border-radius:8px;
+  background:#fff;
+}
+button{
+  cursor:pointer;
+  font-weight:700;
+  background:#111827;
+  color:white;
+  border:none;
+  margin-top:8px;
+}
+button.secondary{
+  background:#f3f4f6;
+  color:#111827;
+  border:1px solid #d1d5db;
+}
+button.success{background:#15803d}
+.hint{
+  font-size:12px;
+  line-height:1.5;
+  color:#4b5563;
+  background:#f9fafb;
+  padding:8px;
+  border-radius:8px;
+  margin-top:8px;
+}
+.topbar{
+  background:#fff;
+  border-bottom:1px solid #ddd;
+  padding:8px 10px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:space-between;
+  flex:0 0 auto;
+}
+.top-left{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  min-width:0;
+}
+.menu-btn{
+  width:auto;
+  padding:6px 10px;
+  margin:0;
+}
+.title{
+  font-size:14px;
+  font-weight:800;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.legend{
+  display:flex;
+  gap:10px;
+  font-size:12px;
+  white-space:nowrap;
+}
+.swatch{display:inline-block;width:12px;height:12px;border:1px solid #aaa;vertical-align:-2px;margin-right:3px}
+.board-wrap{
+  flex:1 1 auto;
+  overflow:auto;
+  position:relative;
+  background:white;
+}
+.board-wrap::-webkit-scrollbar{width:16px;height:16px}
+.board-wrap::-webkit-scrollbar-thumb{background:#9ca3af;border-radius:8px}
+.board-wrap::-webkit-scrollbar-track{background:#f3f4f6}
+.board{
+  position:relative;
+  min-width:1800px;
+  width:max-content;
+}
+.grid{
+  display:grid;
+  grid-template-columns:var(--time-w) repeat(var(--total-cols), var(--route-w));
+  grid-template-rows:var(--head-h) repeat(var(--slot-count), var(--slot-h));
+  position:relative;
+}
+.cell{
+  border-right:1px solid var(--grid);
+  border-bottom:1px solid var(--grid);
+  background:#fff;
+  font-size:10px;
+  overflow:hidden;
+}
+.header{
+  position:sticky;
+  top:0;
+  z-index:30;
+  font-weight:800;
+  text-align:center;
+  padding-top:3px;
+  border-bottom:2px solid #666;
+  background:#fff;
+  line-height:1.15;
+  cursor:pointer;
+  user-select:none;
+}
+.time-head{
+  position:sticky;
+  top:0;
+  left:0;
+  z-index:50;
+  background:#fff;
+}
+.time{
+  position:sticky;
+  left:0;
+  z-index:20;
+  background:#fff;
+  font-weight:800;
+  font-size:10px;
+  text-align:center;
+  padding-top:2px;
+  box-shadow:2px 0 4px rgba(0,0,0,.08);
+}
+.w-mon{background:#f6dce8}
+.w-tue{background:#e4def6}
+.w-wed{background:#dcebf7}
+.w-thu{background:#dff0e8}
+.w-fri{background:#fff3c4}
+.w-sat{background:#f8dfc4}
+.w-sun{background:#f8d0d0}
+.head-weekday{font-size:12px;font-weight:900}
+.head-staff{font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+.route-dragging{opacity:.45}.route-drag-over{outline:3px solid #2563eb;outline-offset:-3px}
+.event{
+  position:absolute;
+  border-radius:5px;
+  border:1px solid rgba(0,0,0,.16);
+  background:var(--green);
+  padding:2px 4px;
+  font-size:10px;
+  line-height:1.15;
+  font-weight:800;
+  overflow:hidden;
+  cursor:grab;
+  user-select:none;
+  box-shadow:0 1px 3px rgba(0,0,0,.18);
+  z-index:10;
+}
+.event.dragging{
+  opacity:.86;
+  z-index:1000;
+  cursor:grabbing;
+  box-shadow:0 8px 18px rgba(0,0,0,.25);
+}
+.event.moved{background:var(--yellow)}
+.event.manual{background:var(--orange)}
+.event.conflict{background:var(--red);color:#7f1d1d}
+.shift-line{
+  position:absolute;
+  height:3px;
+  background:#111827;
+  opacity:.65;
+  border-radius:2px;
+  z-index:6;
+  pointer-events:none;
+}
+.shift-label{
+  position:absolute;
+  font-size:9px;
+  color:#111827;
+  background:rgba(255,255,255,.9);
+  border:1px solid #111827;
+  border-radius:4px;
+  padding:1px 3px;
+  z-index:7;
+  pointer-events:none;
+  white-space:nowrap;
+}
+.status{font-size:12px;color:#374151;margin-top:8px;line-height:1.4}
+.small{font-size:11px;color:#6b7280}
+.file-ok{color:#15803d;font-weight:700}
+.error{color:#b91c1c;font-weight:700}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>週間ルートボード</h1>
+  <div class="hint">
+    安定ベース版です。<br>
+    補完・重複除外・列入れ替えは入れていません。<br>
+    ブラウザ内にCSV本体と変更状態を自動保存します。ページ更新後も復元できます。新しいCSVを読み込むと更新されます。
+  </div>
+
+  <h2>CSV読み込み</h2>
+  <label>① 実績スケジュールCSV</label>
+  <input id="eventsFile" type="file" accept=".csv">
+  <div id="eventsStatus" class="small"></div>
+
+  <label>② 利用者マスタCSV</label>
+  <input id="usersFile" type="file" accept=".csv">
+  <div id="usersStatus" class="small"></div>
+
+  <h2>表示設定</h2>
+  <label>拠点</label>
+  <select id="officeSelect">
+    <option>岩槻</option>
+    <option>見沼</option>
+    <option>大袋</option>
+    <option>不明</option>
+  </select>
+
+  <label>代表日の選び方</label>
+  <select id="modeSelect">
+    <option>標準日に近い日</option>
+    <option>最新日</option>
+  </select>
+
+  <label>表示開始</label>
+  <select id="startHour"></select>
+
+  <label>表示終了</label>
+  <select id="endHour"></select>
+
+  <label>勤務目安ライン</label>
+  <select id="shiftLineSelect">
+    <option value="on">表示する（初回サービス開始から9時間）</option>
+    <option value="off">表示しない</option>
+  </select>
+
+  <button id="renderBtn">表示を更新</button>
+
+  <h2>操作</h2>
+  <button id="undoBtn" class="secondary">1つ前に戻す</button>
+  <button id="resetBtn" class="secondary">仮移動・削除をリセット</button>
+  <button id="clearSavedStateBtn" class="secondary">保存状態を完全クリア</button>
+  <button id="saveBtn" class="success">変更後CSVを保存</button>
+
+  <h2>状態</h2>
+  <div id="status" class="status">CSVを読み込んでください。</div>
+
+  <div class="hint">
+    緑=通常予定<br>
+    黄=仮移動済み<br>
+    赤=同一ルート内で重複<br>
+    右クリック=サービス削除<br>
+    ヘッダーをダブルクリック=名称変更<br>ヘッダーを横ドラッグ=同じ曜日内のルート入れ替え<br>
+    黒線=各ルートの初回サービス開始から9時間後の目安
+  </div>
+</aside>
+
+<main>
+  <div class="topbar">
+    <div class="top-left">
+      <button id="toggleSidebarBtn" class="secondary menu-btn">メニュー</button>
+      <div id="boardTitle" class="title">週間ルート表</div>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#a9d18e"></i>予定</span>
+      <span><i class="swatch" style="background:#fff3b0"></i>仮移動</span>
+      <span><i class="swatch" style="background:#fca5a5"></i>重複</span>
+    </div>
+  </div>
+  <div id="boardWrap" class="board-wrap">
+    <div id="board" class="board"></div>
+  </div>
+</main>
+</div>
+
+<script>
+const WEEKDAYS=["月","火","水","木","金","土","日"];
+const SLOT_MIN=15;
+const SHIFT_MIN=9*60;
+const routeW=92;
+const timeW=58;
+const headH=44;
+const slotH=18;
+
+let rawEvents=[];
+let rawUsers=[];
+let preparedEvents=[];
+let virtualEvents=[];
+let currentEvents=[];
+let routeColumns=[];
+let repDates={};
+let routeCounts={};
+let dragState=null;
+let historyStack=[];
+let deletedIds=new Set();
+let routeLabelOverrides={};
+let columnOrderOverrides={};
+
+const STORAGE_KEY="route_board_saved_state_v2";
+
+function saveAppState(){
+  try{
+    const state={
+      rawEvents,
+      rawUsers,
+      virtualEvents,
+      deletedIds:Array.from(deletedIds||[]),
+      routeLabelOverrides,
+      columnOrderOverrides,
+      savedAt:new Date().toISOString()
+    };
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  }catch(e){
+    console.warn("状態保存に失敗しました",e);
+  }
+}
+
+function loadAppState(){
+  try{
+    const text=localStorage.getItem(STORAGE_KEY);
+    if(!text)return false;
+    const state=JSON.parse(text);
+
+    rawEvents=(state.rawEvents||[]).map(e=>({...e}));
+    rawUsers=(state.rawUsers||[]).map(e=>({...e}));
+    virtualEvents=(state.virtualEvents||[]).map(e=>({...e}));
+    deletedIds=new Set(state.deletedIds||[]);
+    routeLabelOverrides={...(state.routeLabelOverrides||{})};
+    columnOrderOverrides={...(state.columnOrderOverrides||{})};
+
+    if(rawEvents.length && rawUsers.length){
+      prepareAll();
+      render();
+      document.getElementById("eventsStatus").innerHTML=`<span class="file-ok">保存済みCSV ${rawEvents.length}件 復元</span>`;
+      document.getElementById("usersStatus").innerHTML=`<span class="file-ok">保存済みマスタ ${rawUsers.length}件 復元</span>`;
+      return true;
+    }
+
+    return false;
+  }catch(e){
+    console.warn("状態読込に失敗しました",e);
+    return false;
+  }
+}
+
+function clearAppState(){
+  localStorage.removeItem(STORAGE_KEY);
+  rawEvents=[];
+  rawUsers=[];
+  preparedEvents=[];
+  currentEvents=[];
+  virtualEvents=[];
+  deletedIds.clear();
+  routeLabelOverrides={};
+  columnOrderOverrides={};
+  historyStack=[];
+  document.getElementById("board").innerHTML="";
+  document.getElementById("boardTitle").textContent="週間ルート表";
+  document.getElementById("eventsStatus").textContent="";
+  document.getElementById("usersStatus").textContent="";
+  document.getElementById("status").textContent="保存状態をクリアしました。CSVを読み込んでください。";
+}
+
+
+const weekdayClass={"月":"w-mon","火":"w-tue","水":"w-wed","木":"w-thu","金":"w-fri","土":"w-sat","日":"w-sun"};
+
+function minLabel(m){
+  m=((m%(24*60))+24*60)%(24*60);
+  return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
+}
+function clean(v){return (v==null?"":String(v)).trim()}
+function weekdayJP(d){return WEEKDAYS[(d.getDay()+6)%7]}
+
+function initControls(){
+  const s=document.getElementById("startHour");
+  const e=document.getElementById("endHour");
+  for(let i=0;i<=23;i++){
+    const o=document.createElement("option");
+    o.value=i;
+    o.textContent=String(i).padStart(2,"0")+":00";
+    s.appendChild(o);
+  }
+  for(let i=1;i<=24;i++){
+    const o=document.createElement("option");
+    o.value=i;
+    o.textContent=String(i).padStart(2,"0")+":00";
+    e.appendChild(o);
+  }
+  s.value=6;
+  e.value=18;
+}
+initControls();
+
+function parseCSV(text){
+  const rows=[];
+  let row=[],cell="",q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i],nx=text[i+1];
+    if(ch==='"'){
+      if(q&&nx==='"'){cell+='"';i++}
+      else q=!q;
+    }else if(ch===","&&!q){
+      row.push(cell);cell="";
+    }else if((ch==="\n"||ch==="\r")&&!q){
+      if(ch==="\r"&&nx==="\n")i++;
+      row.push(cell);cell="";
+      if(row.some(v=>v.trim()!==""))rows.push(row);
+      row=[];
+    }else{
+      cell+=ch;
+    }
+  }
+  if(cell!==""||row.length){
+    row.push(cell);
+    if(row.some(v=>v.trim()!==""))rows.push(row);
+  }
+  if(!rows.length)return[];
+  const h=rows[0].map(x=>x.trim());
+  return rows.slice(1).map(r=>{
+    const o={};
+    h.forEach((k,i)=>o[k]=(r[i]??"").trim());
+    return o;
+  });
+}
+
+function readFile(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=rej;
+    r.readAsText(file,"Shift_JIS");
+  });
+}
+
+async function handleFileInputs(){
+  const ef=document.getElementById("eventsFile").files[0];
+  const uf=document.getElementById("usersFile").files[0];
+  if(!ef||!uf)return;
+
+  try{
+    const [et,ut]=await Promise.all([readFile(ef),readFile(uf)]);
+    rawEvents=parseCSV(et);
+    rawUsers=parseCSV(ut);
+    document.getElementById("eventsStatus").innerHTML=`<span class="file-ok">${rawEvents.length}件 読込</span>`;
+    document.getElementById("usersStatus").innerHTML=`<span class="file-ok">${rawUsers.length}件 読込</span>`;
+    historyStack=[];
+    virtualEvents=[];
+    deletedIds.clear();
+    routeLabelOverrides={};
+    columnOrderOverrides={};
+    prepareAll();
+    saveAppState();
+    render();
+  }catch(err){
+    document.getElementById("status").innerHTML=`<span class="error">CSV読込エラー: ${err.message}</span>`;
+  }
+}
+
+window.addEventListener("DOMContentLoaded",()=>{
+  loadAppState();
+});
+
+document.getElementById("eventsFile").addEventListener("change",handleFileInputs);
+document.getElementById("usersFile").addEventListener("change",handleFileInputs);
+
+function parseDate(s){
+  if(!s)return null;
+  const m=String(s).trim().match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  return m?new Date(+m[1],+m[2]-1,+m[3]):null;
+}
+function parseTime(s){
+  if(!s)return null;
+  const m=String(s).trim().replace("：",":").match(/^(\d{1,2}):(\d{2})/);
+  return m?(+m[1])*60+(+m[2]):null;
+}
+function normalizeOffice(u){
+  const t=clean(u["担当チーム"]);
+  const g=clean(u["グループ"]);
+  const a=clean(u["訪問先住所"]);
+  for(const o of["岩槻","見沼","大袋"])if(t.includes(o))return o;
+  for(const o of["岩槻","見沼","大袋"])if(g.includes(o))return o;
+  for(const o of["岩槻","見沼","大袋"])if(a.includes(o))return o;
+  return"不明";
+}
+
+function prepareAll(){
+  const userMap=new Map();
+  rawUsers.forEach(u=>{
+    const id=clean(u["ID"]);
+    const name=(clean(u["姓"])+" "+clean(u["名"])).trim();
+    userMap.set(id,{name,office:normalizeOffice(u)});
+  });
+
+  preparedEvents=rawEvents.map((r,idx)=>{
+    if(String(r["キャンセル"]).toUpperCase()==="TRUE")return null;
+    const date=parseDate(r["日付"]);
+    const start=parseTime(r["開始時刻"]);
+    const end=parseTime(r["終了時刻"]);
+    if(!date||start==null||end==null||end<=start)return null;
+
+    const uid=clean(r["利用者ID"]);
+    const user=userMap.get(uid)||{
+      name:(clean(r["利用者（姓）"])+" "+clean(r["利用者（名）"])).trim(),
+      office:"不明"
+    };
+    const staffId=clean(r["担当職員ID"])||"未設定";
+    const staffName=(clean(r["担当職員（姓）"])+" "+clean(r["担当職員（名）"])).trim()||staffId;
+    const dateOnly=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+
+    return{
+      originalIndex:idx,
+      raw:r,
+      id:`${dateOnly}_${staffId}_${uid}_${start}_${end}_${idx}`,
+      userId:uid,
+      name:user.name||uid||"名称不明",
+      office:user.office,
+      date,
+      dateOnly,
+      weekday:weekdayJP(date),
+      start,
+      end,
+      duration:end-start,
+      staffId,
+      staffName,
+      route:null,
+      moved:false,
+      simWeekday:null,
+      simRoute:null,
+      simStart:null,
+      simEnd:null,
+      conflict:false
+    };
+  }).filter(Boolean);
+}
+
+function chooseRepDate(events,office,weekday,mode){
+  const target=events.filter(e=>e.office===office&&e.weekday===weekday);
+  if(!target.length)return null;
+
+  const by=new Map();
+  target.forEach(e=>{
+    if(!by.has(e.dateOnly))by.set(e.dateOnly,[]);
+    by.get(e.dateOnly).push(e);
+  });
+
+  const stats=[...by.entries()].map(([d,a])=>({
+    date:d,
+    routeCount:new Set(a.map(e=>e.staffId)).size,
+    eventCount:a.length
+  }));
+
+  if(mode==="最新日"){
+    return stats.sort((a,b)=>a.date.localeCompare(b.date)).at(-1).date;
+  }
+
+  const rc=stats.map(s=>s.routeCount).sort((a,b)=>a-b);
+  const ec=stats.map(s=>s.eventCount).sort((a,b)=>a-b);
+  const med=a=>a.length%2?a[Math.floor(a.length/2)]:(a[a.length/2-1]+a[a.length/2])/2;
+  const mr=med(rc),me=med(ec);
+
+  stats.forEach(s=>s.score=Math.abs(s.routeCount-mr)*10+Math.abs(s.eventCount-me));
+  return stats.sort((a,b)=>a.score-b.score||b.date.localeCompare(a.date))[0].date;
+}
+
+function buildRoutesForDay(arr){
+  const by=new Map();
+  arr.forEach(e=>{
+    if(!by.has(e.staffId))by.set(e.staffId,[]);
+    by.get(e.staffId).push(e);
+  });
+
+  const infos=[...by.entries()].map(([staffId,a])=>({
+    staffId,
+    staffName:a[0].staffName,
+    first:Math.min(...a.map(e=>e.start))
+  })).sort((a,b)=>a.first-b.first||a.staffName.localeCompare(b.staffName));
+
+  const rm=new Map();
+  infos.forEach((x,i)=>rm.set(x.staffId,i+1));
+  arr.forEach(e=>e.route=rm.get(e.staffId));
+
+  return infos.length;
+}
+
+function buildCurrentEvents(){
+  const office=document.getElementById("officeSelect").value;
+  const mode=document.getElementById("modeSelect").value;
+
+  repDates={};
+  routeCounts={};
+
+  let result=[];
+
+  for(const w of WEEKDAYS){
+    const d=chooseRepDate(preparedEvents,office,w,mode);
+    repDates[w]=d;
+
+    if(!d){
+      routeCounts[w]=0;
+      continue;
+    }
+
+    const arr=preparedEvents
+      .filter(e=>e.office===office&&e.weekday===w&&e.dateOnly===d)
+      .map(e=>({...e}));
+
+    routeCounts[w]=buildRoutesForDay(arr);
+    result=result.concat(arr);
+  }
+
+  const movedMap=new Map(preparedEvents.filter(e=>e.moved).map(e=>[e.id,e]));
+
+  result=result.filter(e=>!movedMap.has(e.id));
+
+  for(const m of movedMap.values()){
+    if(m.office!==office)continue;
+    result.push({
+      ...m,
+      weekday:m.simWeekday,
+      route:m.simRoute,
+      start:m.simStart,
+      end:m.simEnd
+    });
+    routeCounts[m.simWeekday]=Math.max(routeCounts[m.simWeekday]||1,m.simRoute);
+  }
+
+  result=result.filter(e=>!deletedIds.has(e.id));
+
+  for(const v of virtualEvents){
+    if(v.office!==office)continue;
+    if(deletedIds.has(v.id))continue;
+    result.push({...v});
+    routeCounts[v.weekday]=Math.max(routeCounts[v.weekday]||1,v.route||1);
+  }
+
+  return result;
+}
+
+function detectConflicts(events){
+  events.forEach(e=>e.conflict=false);
+
+  for(let i=0;i<events.length;i++){
+    for(let j=i+1;j<events.length;j++){
+      const a=events[i],b=events[j];
+      const over=Math.max(0,Math.min(a.end,b.end)-Math.max(a.start,b.start))>0;
+      if(!over)continue;
+      if(a.weekday===b.weekday&&Number(a.route)===Number(b.route)){
+        a.conflict=true;
+        b.conflict=true;
+      }
+    }
+  }
+}
+
+function routeLabelKey(weekday,route){
+  return `${weekday}_R${route}`;
+}
+
+function getRouteStaffLabel(weekday,route){
+  const routeEvents=currentEvents
+    .filter(e=>e.weekday===weekday&&Number(e.route)===Number(route)&&e.staffName)
+    .sort((a,b)=>a.start-b.start);
+
+  if(!routeEvents.length)return `R${route}`;
+
+  const counts=new Map();
+  const first=new Map();
+
+  routeEvents.forEach((e,idx)=>{
+    const n=clean(e.staffName);
+    if(!n)return;
+    counts.set(n,(counts.get(n)||0)+1);
+    if(!first.has(n))first.set(n,idx);
+  });
+
+  let best="";
+  let bestCount=-1;
+  let bestOrder=999999;
+
+  counts.forEach((count,name)=>{
+    const order=first.get(name)??999999;
+    if(count>bestCount||(count===bestCount&&order<bestOrder)){
+      best=name;
+      bestCount=count;
+      bestOrder=order;
+    }
+  });
+
+  return best||`R${route}`;
+}
+
+function getRouteHeaderLabel(weekday,route){
+  const key=routeLabelKey(weekday,route);
+  return routeLabelOverrides[key]||getRouteStaffLabel(weekday,route);
+}
+
+function editRouteHeaderLabel(weekday,route){
+  const key=routeLabelKey(weekday,route);
+  const current=getRouteHeaderLabel(weekday,route);
+  const next=prompt(`${weekday} R${route} の表示名を入力してください`,current);
+
+  if(next===null)return;
+
+  const cleaned=clean(next);
+  if(cleaned)routeLabelOverrides[key]=cleaned;
+  else delete routeLabelOverrides[key];
+
+  saveAppState();
+  render();
+}
+
+function pushHistory(){
+  historyStack.push({
+    prepared:preparedEvents.map(e=>({...e})),
+    virtuals:virtualEvents.map(e=>({...e})),
+    deleted:Array.from(deletedIds),
+    labels:{...routeLabelOverrides},
+    columnOrder:JSON.parse(JSON.stringify(columnOrderOverrides||{}))
+  });
+  if(historyStack.length>50)historyStack.shift();
+}
+
+function undo(){
+  const last=historyStack.pop();
+  if(!last)return;
+  preparedEvents=last.prepared.map(e=>({...e}));
+  virtualEvents=(last.virtuals||[]).map(e=>({...e}));
+  deletedIds=new Set(last.deleted||[]);
+  routeLabelOverrides={...(last.labels||{})};
+  columnOrderOverrides=JSON.parse(JSON.stringify(last.columnOrder||{}));
+  render();
+}
+
+
+function getColumnOrderKey(weekday){
+  return `order_${weekday}`;
+}
+
+function getColumnOrderForWeekday(weekday,maxRoute){
+  const key=getColumnOrderKey(weekday);
+
+  if(!columnOrderOverrides[key]){
+    columnOrderOverrides[key]=Array.from({length:maxRoute},(_,i)=>i+1);
+  }
+
+  const existing=new Set(columnOrderOverrides[key]);
+
+  for(let r=1;r<=maxRoute;r++){
+    if(!existing.has(r)){
+      columnOrderOverrides[key].push(r);
+    }
+  }
+
+  columnOrderOverrides[key]=columnOrderOverrides[key].filter(r=>r>=1&&r<=maxRoute);
+
+  return columnOrderOverrides[key];
+}
+
+function swapRouteColumns(fromWeekday,fromRoute,toWeekday,toRoute){
+  if(fromWeekday!==toWeekday){
+    alert("まずは同じ曜日内のルート入れ替えのみ対応しています。");
+    return;
+  }
+
+  fromRoute=Number(fromRoute);
+  toRoute=Number(toRoute);
+
+  if(fromRoute===toRoute)return;
+
+  pushHistory();
+
+  const maxRoute=Math.max(fromRoute,toRoute,routeCounts[fromWeekday]||1);
+  const order=getColumnOrderForWeekday(fromWeekday,maxRoute);
+
+  const i1=order.indexOf(fromRoute);
+  const i2=order.indexOf(toRoute);
+
+  if(i1===-1||i2===-1)return;
+
+  const tmp=order[i1];
+  order[i1]=order[i2];
+  order[i2]=tmp;
+
+  columnOrderOverrides[getColumnOrderKey(fromWeekday)]=order;
+
+  saveAppState();
+  render();
+}
+
+function setupRouteHeaderDrag(headerEl,weekday,route){
+  headerEl.draggable=true;
+
+  headerEl.addEventListener("dragstart",ev=>{
+    ev.dataTransfer.setData("text/plain",JSON.stringify({weekday,route}));
+    ev.dataTransfer.effectAllowed="move";
+    headerEl.classList.add("route-dragging");
+  });
+
+  headerEl.addEventListener("dragend",()=>{
+    headerEl.classList.remove("route-dragging");
+  });
+
+  headerEl.addEventListener("dragover",ev=>{
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect="move";
+    headerEl.classList.add("route-drag-over");
+  });
+
+  headerEl.addEventListener("dragleave",()=>{
+    headerEl.classList.remove("route-drag-over");
+  });
+
+  headerEl.addEventListener("drop",ev=>{
+    ev.preventDefault();
+    headerEl.classList.remove("route-drag-over");
+
+    let data=null;
+
+    try{
+      data=JSON.parse(ev.dataTransfer.getData("text/plain"));
+    }catch(e){
+      return;
+    }
+
+    if(!data)return;
+
+    swapRouteColumns(data.weekday,data.route,weekday,route);
+  });
+}
+
+function render(){
+  if(!preparedEvents.length){
+    document.getElementById("status").textContent="CSVを読み込んでください。";
+    return;
+  }
+
+  const startH=Number(document.getElementById("startHour").value);
+  const endH=Number(document.getElementById("endHour").value);
+
+  currentEvents=buildCurrentEvents();
+  detectConflicts(currentEvents);
+
+  const maxRoutes={};
+  WEEKDAYS.forEach(w=>maxRoutes[w]=Math.max(1,routeCounts[w]||0));
+  currentEvents.forEach(e=>maxRoutes[e.weekday]=Math.max(maxRoutes[e.weekday]||1,e.route||1));
+
+  routeColumns=[];
+  for(const w of WEEKDAYS){
+    const order=getColumnOrderForWeekday(w,maxRoutes[w]);
+    for(const r of order){
+      routeColumns.push({weekday:w,route:r});
+    }
+  }
+
+  const totalCols=routeColumns.length;
+  const slotCount=(endH-startH)*60/SLOT_MIN;
+
+  const board=document.getElementById("board");
+  board.innerHTML="";
+  board.style.setProperty("--total-cols",totalCols);
+  board.style.setProperty("--slot-count",slotCount);
+
+  const grid=document.createElement("div");
+  grid.className="grid";
+  grid.style.setProperty("--total-cols",totalCols);
+  grid.style.setProperty("--slot-count",slotCount);
+  board.appendChild(grid);
+
+  const th=document.createElement("div");
+  th.className="cell header time-head";
+  th.style.gridColumn="1";
+  th.style.gridRow="1";
+  th.textContent="時刻";
+  grid.appendChild(th);
+
+  routeColumns.forEach((c,idx)=>{
+    const h=document.createElement("div");
+    h.className=`cell header ${weekdayClass[c.weekday]}`;
+    h.style.gridColumn=String(idx+2);
+    h.style.gridRow="1";
+    h.innerHTML=`<div class="head-weekday">${c.weekday}</div><div class="head-staff">${getRouteHeaderLabel(c.weekday,c.route)}</div>`;
+    h.title=`ダブルクリックで名称変更 / ドラッグで同じ曜日内のルート入れ替え（${c.weekday} R${c.route}）`;
+    h.addEventListener("dblclick",()=>editRouteHeaderLabel(c.weekday,c.route));
+    setupRouteHeaderDrag(h,c.weekday,c.route);
+    grid.appendChild(h);
+  });
+
+  for(let s=0;s<slotCount;s++){
+    const m=startH*60+s*SLOT_MIN;
+
+    const time=document.createElement("div");
+    time.className="cell time";
+    time.style.gridColumn="1";
+    time.style.gridRow=String(s+2);
+    time.textContent=minLabel(m);
+    grid.appendChild(time);
+
+    routeColumns.forEach((c,idx)=>{
+      const cell=document.createElement("div");
+      cell.className="cell";
+      cell.style.gridColumn=String(idx+2);
+      cell.style.gridRow=String(s+2);
+      grid.appendChild(cell);
+    });
+  }
+
+  const boardWidth=timeW+totalCols*routeW;
+  const boardHeight=headH+slotCount*slotH;
+  board.style.width=boardWidth+"px";
+  board.style.height=boardHeight+"px";
+
+  drawShiftLines(board,startH,slotCount);
+
+  currentEvents.forEach(e=>{
+    const colIdx=routeColumns.findIndex(c=>c.weekday===e.weekday&&Number(c.route)===Number(e.route));
+    if(colIdx<0)return;
+
+    const top=headH+((e.start-startH*60)/SLOT_MIN)*slotH;
+    const height=Math.max(slotH,(e.duration/SLOT_MIN)*slotH-2);
+
+    if(top+height<headH||top>boardHeight)return;
+
+    const left=timeW+colIdx*routeW+3;
+
+    const el=document.createElement("div");
+    el.className=`event ${e.moved?"moved":""} ${e.conflict?"conflict":""}`;
+    el.style.left=left+"px";
+    el.style.top=top+"px";
+    el.style.width=(routeW-6)+"px";
+    el.style.height=height+"px";
+    el.textContent=`${minLabel(e.start)} ${e.name}`;
+    el.title=`${e.name}\n${e.weekday} R${e.route} ${minLabel(e.start)}-${minLabel(e.end)}`;
+    el.dataset.id=e.id;
+
+    el.addEventListener("contextmenu",(ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      if(confirm("このサービスを削除しますか？")){
+        pushHistory();
+        deletedIds.add(e.id);
+        saveAppState();
+        render();
+      }
+    });
+
+    board.appendChild(el);
+    makeDraggable(el,e);
+  });
+
+  const office=document.getElementById("officeSelect").value;
+  const reps=WEEKDAYS.map(w=>repDates[w]?`${w}:${repDates[w]}(${routeCounts[w]||0}R)`:`${w}:なし`).join(" / ");
+  document.getElementById("boardTitle").textContent=`${office} 週間ルート　${reps}`;
+
+  const moved=preparedEvents.filter(e=>e.moved).length + virtualEvents.length;
+  const deleted=deletedIds.size;
+  const conflicts=currentEvents.filter(e=>e.conflict).length;
+
+  document.getElementById("status").innerHTML=
+    `表示件数: ${currentEvents.length}<br>`+
+    `仮移動: ${moved}<br>`+
+    `削除: ${deleted}<br>`+
+    `同一ルート重複: ${conflicts}`;
+}
+
+function drawShiftLines(board,startH,slotCount){
+  if(document.getElementById("shiftLineSelect").value!=="on")return;
+
+  const boardHeight=headH+slotCount*slotH;
+  const firstByCol=new Map();
+
+  currentEvents.forEach(e=>{
+    const colIdx=routeColumns.findIndex(c=>c.weekday===e.weekday&&Number(c.route)===Number(e.route));
+    if(colIdx<0)return;
+    const ex=firstByCol.get(colIdx);
+    if(ex==null||e.start<ex)firstByCol.set(colIdx,e.start);
+  });
+
+  firstByCol.forEach((first,colIdx)=>{
+    const end=first+SHIFT_MIN;
+    const y=headH+((end-startH*60)/SLOT_MIN)*slotH;
+
+    if(y<headH||y>boardHeight)return;
+
+    const left=timeW+colIdx*routeW+2;
+
+    const line=document.createElement("div");
+    line.className="shift-line";
+    line.style.left=left+"px";
+    line.style.top=y+"px";
+    line.style.width=(routeW-4)+"px";
+    board.appendChild(line);
+
+    const label=document.createElement("div");
+    label.className="shift-label";
+    label.style.left=(left+3)+"px";
+    label.style.top=(y-13)+"px";
+    label.textContent=`9h ${minLabel(end)}`;
+    board.appendChild(label);
+  });
+}
+
+function makeDraggable(el,eventObj){
+  el.addEventListener("pointerdown",ev=>{
+    ev.preventDefault();
+    el.setPointerCapture(ev.pointerId);
+
+    const rect=el.getBoundingClientRect();
+    const br=document.getElementById("board").getBoundingClientRect();
+
+    dragState={
+      id:eventObj.id,
+      offsetX:ev.clientX-rect.left,
+      offsetY:ev.clientY-rect.top
+    };
+
+    el.classList.add("dragging");
+  });
+
+  el.addEventListener("pointermove",ev=>{
+    if(!dragState||dragState.id!==eventObj.id)return;
+
+    const br=document.getElementById("board").getBoundingClientRect();
+    const x=ev.clientX-br.left-dragState.offsetX;
+    const y=ev.clientY-br.top-dragState.offsetY;
+
+    el.style.left=x+"px";
+    el.style.top=y+"px";
+  });
+
+  el.addEventListener("pointerup",ev=>{
+    if(!dragState||dragState.id!==eventObj.id)return;
+
+    el.classList.remove("dragging");
+
+    const br=document.getElementById("board").getBoundingClientRect();
+    const rawX=ev.clientX-br.left-dragState.offsetX;
+    const rawY=ev.clientY-br.top-dragState.offsetY;
+
+    const col=Math.max(0,Math.min(routeColumns.length-1,Math.round((rawX-timeW)/routeW)));
+    const slot=Math.max(0,Math.round((rawY-headH)/slotH));
+
+    const startH=Number(document.getElementById("startHour").value);
+    const newStart=startH*60+slot*SLOT_MIN;
+    const target=routeColumns[col];
+
+    pushHistory();
+
+    const original=preparedEvents.find(e=>e.id===eventObj.id);
+    const existingVirtual=virtualEvents.find(e=>e.id===eventObj.id);
+
+    const source = original || existingVirtual;
+
+    if(source){
+      if(original){
+        deletedIds.add(original.id);
+      }else{
+        virtualEvents = virtualEvents.filter(e=>e.id!==existingVirtual.id);
+      }
+
+      const newId=`virtual_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+      virtualEvents.push({
+        ...source,
+        id:newId,
+        originalId:source.originalId || source.id,
+        weekday:target.weekday,
+        route:target.route,
+        start:newStart,
+        end:newStart+source.duration,
+        moved:true,
+        simWeekday:null,
+        simRoute:null,
+        simStart:null,
+        simEnd:null
+      });
+    }
+
+    saveAppState();
+    dragState=null;
+    render();
+  });
+}
+
+function csvEscape(v){
+  if(v==null)return"";
+  const s=String(v);
+  return /[",\n\r]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;
+}
+
+function saveCSV(){
+  if(!rawEvents.length){
+    alert("実績CSVを読み込んでください。");
+    return;
+  }
+
+  const rows=rawEvents.map(r=>({...r}));
+
+  virtualEvents.forEach(v=>{
+    const original=preparedEvents.find(e=>e.id===v.originalId);
+    if(original && rows[original.originalIndex]){
+      rows[original.originalIndex]["開始時刻"]=minLabel(v.start);
+      rows[original.originalIndex]["終了時刻"]=minLabel(v.end);
+      rows[original.originalIndex]["仮移動曜日"]=v.weekday;
+      rows[original.originalIndex]["仮移動ルート"]=v.route;
+      rows[original.originalIndex]["変更種別"]="仮移動";
+    }else{
+      rows.push({
+        "ID":v.id,
+        "予定種別":"画面上追加",
+        "利用者（姓）":v.name,
+        "利用者（名）":"",
+        "利用者ID":v.userId||"",
+        "日付":"",
+        "開始時刻":minLabel(v.start),
+        "終了時刻":minLabel(v.end),
+        "担当職員ID":v.staffId||"",
+        "仮移動曜日":v.weekday,
+        "仮移動ルート":v.route,
+        "変更種別":"画面上追加"
+      });
+    }
+  });
+
+  deletedIds.forEach(id=>{
+    const e=preparedEvents.find(x=>x.id===id);
+    const hasVirtual=virtualEvents.some(v=>v.originalId===id);
+    if(e&&rows[e.originalIndex]&&!hasVirtual){
+      rows[e.originalIndex]["変更種別"]="画面上削除";
+    }
+  });
+
+  const headers=[...new Set(rows.flatMap(r=>Object.keys(r)))];
+
+  const csv=[headers.map(csvEscape).join(",")]
+    .concat(rows.map(r=>headers.map(h=>csvEscape(r[h])).join(",")))
+    .join("\r\n");
+
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="route_board_modified.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("renderBtn").addEventListener("click",render);
+document.getElementById("undoBtn").addEventListener("click",undo);
+document.getElementById("resetBtn").addEventListener("click",()=>{
+  preparedEvents.forEach(e=>{
+    e.moved=false;
+    e.simWeekday=null;
+    e.simRoute=null;
+    e.simStart=null;
+    e.simEnd=null;
+  });
+  deletedIds.clear();
+  virtualEvents=[];
+  historyStack=[];
+  columnOrderOverrides={};
+  saveAppState();
+  render();
+});
+document.getElementById("saveBtn").addEventListener("click",saveCSV);
+document.getElementById("clearSavedStateBtn").addEventListener("click",()=>{if(confirm("保存状態を完全にクリアしますか？"))clearAppState();});
+document.getElementById("toggleSidebarBtn").addEventListener("click",()=>{
+  document.body.classList.toggle("collapsed");
+});
+
+["officeSelect","modeSelect","startHour","endHour","shiftLineSelect"].forEach(id=>{
+  document.getElementById(id).addEventListener("change",render);
+});
+
+document.getElementById("boardWrap").addEventListener("wheel",e=>{
+  // 通常は縦スクロール。Shift+ホイールで横スクロール。
+  if(e.shiftKey&&Math.abs(e.deltaY)>Math.abs(e.deltaX)){
+    e.currentTarget.scrollLeft+=e.deltaY;
+    e.preventDefault();
+  }
+},{passive:false});
+</script>
+</body>
+</html>
