@@ -499,6 +499,52 @@ async function handleFileInputs(){
   }
 }
 
+function importCsvTexts(eventsText,usersText,sourceLabel){
+  if(!eventsText){
+    throw new Error("実績スケジュールCSVが空です。");
+  }
+
+  const nextEvents=parseCSV(eventsText);
+  const nextUsers=usersText ? parseCSV(usersText) : rawUsers;
+
+  if(!nextEvents.length){
+    throw new Error("実績スケジュールCSVを読み込めませんでした。");
+  }
+
+  if(!nextUsers.length){
+    throw new Error("利用者マスタCSVが未読込です。先に手動で利用者マスタCSVを読み込んでください。");
+  }
+
+  rawEvents=nextEvents;
+  rawUsers=nextUsers;
+
+  historyStack=[];
+  virtualEvents=[];
+  deletedIds.clear();
+  routeLabelOverrides={};
+  columnOrderOverrides={};
+
+  prepareAll();
+  saveAppState();
+  render();
+
+  document.getElementById("eventsStatus").innerHTML=`<span class="file-ok">${rawEvents.length}件 ${sourceLabel||"外部"}読込</span>`;
+  document.getElementById("usersStatus").innerHTML=`<span class="file-ok">${rawUsers.length}件 マスタ利用中</span>`;
+  document.getElementById("status").innerHTML=`<span class="file-ok">${sourceLabel||"外部"}からCSVを自動反映しました。</span>`;
+}
+
+window.addEventListener("message",ev=>{
+  if(ev.origin!==location.origin)return;
+  const data=ev.data||{};
+  if(data.type!=="ROUTE_BOARD_IMPORT_ZEST_CSV")return;
+
+  try{
+    importCsvTexts(data.eventsCsv,data.usersCsv,"ZEST");
+  }catch(err){
+    document.getElementById("status").innerHTML=`<span class="error">ZEST CSV自動反映エラー: ${err.message}</span>`;
+  }
+});
+
 window.addEventListener("DOMContentLoaded",()=>{
   loadAppState();
 });
